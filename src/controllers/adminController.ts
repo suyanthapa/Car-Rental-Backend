@@ -12,6 +12,17 @@ interface UserRow extends RowDataPacket {
   role: string;
 }
 
+interface CarRow extends RowDataPacket {
+  id: string;
+  name: string;
+  brand: string;
+  type: string;
+  fuelType: string;
+  seats: number;
+  pricePerDay: number;
+  imageUrl: string;
+}
+
 interface CountResult extends RowDataPacket {
   total: number;
 }
@@ -327,6 +338,90 @@ const editCar = async (req: AuthRequest, res: Response): Promise<void> => {
   }
 };
 
+const getPendingBookings = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const [rows] = await query<RowDataPacket[]>(`
+      SELECT 
+        b.id as bookingId,
+        b.status,
+        b.startDate,
+        b.endDate,
+        b.createdAt as bookingCreatedAt,
+        u.id as userId,
+        u.username,
+        u.email,
+        u.phone,
+        c.id as carId,
+        c.name,
+        c.brand,
+        c.type,
+        c.fuelType,
+        c.seats,
+        c.pricePerDay,
+        c.imageUrl
+      FROM bookings b
+      INNER JOIN users u ON b.userId = u.id
+      INNER JOIN cars c ON b.carId = c.id
+      WHERE b.status = 'PENDING'
+      ORDER BY c.id, b.createdAt DESC
+    `);
+
+    // Group bookings by car
+    const carMap = new Map<string, any>();
+
+    rows.forEach((row) => {
+      const carId = row.carId;
+
+      if (!carMap.has(carId)) {
+        carMap.set(carId, {
+          car: {
+            id: row.carId,
+            name: row.name,
+            brand: row.brand,
+            type: row.type,
+            fuelType: row.fuelType,
+            seats: row.seats,
+            pricePerDay: row.pricePerDay,
+            images: row.imageUrl ? JSON.parse(row.imageUrl) : [],
+          },
+          bookings: [],
+        });
+      }
+
+      carMap.get(carId).bookings.push({
+        booking: {
+          id: row.bookingId,
+          status: row.status,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          createdAt: row.bookingCreatedAt,
+        },
+        user: {
+          id: row.userId,
+          username: row.username,
+          email: row.email,
+          phone: row.phone,
+        },
+      });
+    });
+
+    const formatted = Array.from(carMap.values());
+
+    res.status(200).json({
+      success: true,
+      totalCars: formatted.length,
+      totalBookings: rows.length,
+      data: formatted,
+    });
+  } catch (error) {
+    console.error("Fetch pending bookings error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 const adminController = {
   addCar,
   allUsers,
@@ -334,6 +429,7 @@ const adminController = {
   deleteCar,
   editUser,
   editCar,
+  getPendingBookings,
 };
 
 export default adminController;

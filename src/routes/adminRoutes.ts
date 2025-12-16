@@ -10,6 +10,14 @@ import adminValidation from "../validations/adminValidation";
 
 const adminRoutes = Router();
 
+// Get Pending Booked Cars
+adminRoutes.get(
+  "/pending-booked-cars",
+  authMiddleware,
+  adminMiddleware,
+  adminController.getPendingBookings
+);
+
 // Add Car
 adminRoutes.post(
   "/addCar",

@@ -96,7 +96,7 @@ const bookCar = async (req: AuthRequest, res: Response): Promise<void> => {
 
     res.status(201).json({
       success: true,
-      message: "Car booked successfully",
+      message: "Car booked 'on pending' status",
       data: {
         bookingId,
         carId,
