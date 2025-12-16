@@ -89,9 +89,9 @@ const bookCar = async (req: AuthRequest, res: Response): Promise<void> => {
     // Create booking
     const bookingId = uuidv4();
     await query(
-      `INSERT INTO bookings (id, userId, carId, startDate, endDate, status) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [bookingId, userId, carId, startDate, endDate, "PENDING"]
+      `INSERT INTO bookings ( userId, carId, startDate, endDate, status) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [userId, carId, startDate, endDate, "PENDING"]
     );
 
     res.status(201).json({

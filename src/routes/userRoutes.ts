@@ -3,7 +3,6 @@ import authMiddleware from "../middlewares/authMiddleware";
 import validate from "../middlewares/validation";
 import userController from "../controllers/userController";
 import userValidation from "../validations/userValidation";
-
 const userRoutes = Router();
 
 // Book Car
