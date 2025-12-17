@@ -1,7 +1,7 @@
 import Joi from "joi";
 
 const userValidation = {
-  bookCar: {
+  bookVehicle: {
     body: Joi.object().keys({
       carId: Joi.string().uuid().required().messages({
         "string.empty": "Car ID is required",

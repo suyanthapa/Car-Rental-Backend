@@ -1,12 +1,12 @@
 meta {
-  name: Book Car
+  name: Available Vehicle
   type: http
-  seq: 1
+  seq: 2
 }
 
-post {
-  url: http://localhost:5000/api/v1/user/bookCar
-  body: json
+get {
+  url: http://localhost:5000/api/v1/user/vehicles/available
+  body: none
   auth: inherit
 }
 

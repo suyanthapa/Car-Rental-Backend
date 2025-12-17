@@ -23,7 +23,7 @@ interface BookingRow extends RowDataPacket {
   status: string;
 }
 
-const bookCar = async (req: AuthRequest, res: Response): Promise<void> => {
+const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { carId, startDate, endDate } = req.body;
     const userId = req.user?.id;
@@ -111,8 +111,32 @@ const bookCar = async (req: AuthRequest, res: Response): Promise<void> => {
   }
 };
 
+const getAvailableVehicle = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const [cars] = await query<CarRow[]>(
+      `SELECT * FROM cars WHERE status = 'AVAILABLE' ORDER BY createdAt DESC`
+    );
+
+    res.status(200).json({
+      success: true,
+      count: cars.length,
+      data: cars.map((car) => ({
+        ...car,
+        imageUrl: car.imageUrl ? JSON.parse(car.imageUrl) : [],
+      })),
+    });
+  } catch (error) {
+    console.error("Fetch available cars error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 const userController = {
-  bookCar,
+  bookVehicle,
+  getAvailableVehicle,
 };
 
 export default userController;
