@@ -1,0 +1,25 @@
+meta {
+  name: Specific Vehicle Details
+  type: http
+  seq: 3
+}
+
+get {
+  url: http://localhost:5000/api/v1/user/vehicles/370d49f1-db3b-11f0-b524-507b9de891cb
+  body: none
+  auth: inherit
+}
+
+body:json {
+  {
+    "carId": "4d241e16-da77-11f0-9ad4-507b9de891cb",
+    "startDate": "2025-12-20T10:00:00",
+    "endDate": "2025-12-22T10:00:00"
+  }
+  
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

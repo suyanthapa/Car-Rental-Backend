@@ -12,9 +12,17 @@ userRoutes.get(
   userController.getAvailableVehicle
 );
 
-// Book Car
+// View specific vehicle
+userRoutes.get(
+  "/vehicles/:vehicleId",
+  authMiddleware,
+  validate(userValidation.viewSpecificVehicle),
+  userController.getVehicleById
+);
+
+// Book Vehicle
 userRoutes.post(
-  "/bookCar",
+  "/bookVehicle",
   authMiddleware,
   validate(userValidation.bookVehicle),
   userController.bookVehicle

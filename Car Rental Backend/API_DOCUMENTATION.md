@@ -1,12 +1,15 @@
 # Car Rental Backend - API Documentation
 
 ## Base URL
+
 ```
 http://localhost:3000/api
 ```
 
 ## Authentication
+
 Most endpoints require authentication. Include the JWT token in the Authorization header:
+
 ```
 Authorization: Bearer <your_jwt_token>
 ```
@@ -16,9 +19,11 @@ Authorization: Bearer <your_jwt_token>
 ## Auth Routes (`/api/auth`)
 
 ### 1. Register User
+
 **POST** `/api/auth/register`
 
 **Request Body:**
+
 ```json
 {
   "username": "john_doe",
@@ -29,6 +34,7 @@ Authorization: Bearer <your_jwt_token>
 ```
 
 **Response (201 - Success):**
+
 ```json
 {
   "success": true,
@@ -47,6 +53,7 @@ Authorization: Bearer <your_jwt_token>
 ```
 
 **Response (400 - Validation Error):**
+
 ```json
 {
   "message": "Validation error message"
@@ -56,9 +63,11 @@ Authorization: Bearer <your_jwt_token>
 ---
 
 ### 2. Login
+
 **POST** `/api/auth/login`
 
 **Request Body:**
+
 ```json
 {
   "email": "john@example.com",
@@ -67,6 +76,7 @@ Authorization: Bearer <your_jwt_token>
 ```
 
 **Response (200 - Success):**
+
 ```json
 {
   "success": true,
@@ -83,6 +93,7 @@ Authorization: Bearer <your_jwt_token>
 ```
 
 **Response (401 - Invalid Credentials):**
+
 ```json
 {
   "message": "Invalid email or password"
@@ -92,17 +103,21 @@ Authorization: Bearer <your_jwt_token>
 ---
 
 ## Admin Routes (`/api/admin`)
-*All admin routes require authentication and admin role*
+
+_All admin routes require authentication and admin role_
 
 ### 1. Get Pending Bookings
-**GET** `/api/admin/pending-booked-cars`
+
+**GET** `/api/admin/pending-booked-vehicles`
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_jwt_token>
 ```
 
 **Response (200 - Success):**
+
 ```json
 {
   "success": true,
@@ -145,15 +160,18 @@ Authorization: Bearer <admin_jwt_token>
 ---
 
 ### 2. Add Car
+
 **POST** `/api/admin/addCar`
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_jwt_token>
 Content-Type: multipart/form-data
 ```
 
 **Request Body (Form Data):**
+
 ```
 name: "Toyota Camry"
 brand: "Toyota"
@@ -165,6 +183,7 @@ images: [File, File, File] // Max 5 images
 ```
 
 **Response (201 - Success):**
+
 ```json
 {
   "message": "Car added successfully",
@@ -181,6 +200,7 @@ images: [File, File, File] // Max 5 images
 ```
 
 **Response (400 - No Images):**
+
 ```json
 {
   "message": "At least one image is required"
@@ -190,20 +210,24 @@ images: [File, File, File] // Max 5 images
 ---
 
 ### 3. Get All Users (with Pagination)
+
 **POST** `/api/admin/users`
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_jwt_token>
 ```
 
 **Query Parameters:**
+
 ```
 page: 1 (default)
 pageSize: 10 (default)
 ```
 
 **Response (200 - Success):**
+
 ```json
 {
   "success": true,
@@ -230,19 +254,23 @@ pageSize: 10 (default)
 ---
 
 ### 4. Delete User
+
 **DELETE** `/api/admin/user/:userId`
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_jwt_token>
 ```
 
 **URL Parameters:**
+
 ```
 userId: user-uuid
 ```
 
 **Response (200 - Success):**
+
 ```json
 {
   "success": true,
@@ -251,6 +279,7 @@ userId: user-uuid
 ```
 
 **Response (404 - Not Found):**
+
 ```json
 {
   "message": "User not found"
@@ -260,19 +289,23 @@ userId: user-uuid
 ---
 
 ### 5. Delete Car
+
 **DELETE** `/api/admin/car/:carId`
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_jwt_token>
 ```
 
 **URL Parameters:**
+
 ```
 carId: car-uuid
 ```
 
 **Response (200 - Success):**
+
 ```json
 {
   "success": true,
@@ -281,6 +314,7 @@ carId: car-uuid
 ```
 
 **Response (404 - Not Found):**
+
 ```json
 {
   "message": "Car not found"
@@ -290,19 +324,23 @@ carId: car-uuid
 ---
 
 ### 6. Edit User
+
 **PUT** `/api/admin/user/:userId`
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_jwt_token>
 ```
 
 **URL Parameters:**
+
 ```
 userId: user-uuid
 ```
 
 **Request Body:**
+
 ```json
 {
   "username": "john_updated",
@@ -310,9 +348,11 @@ userId: user-uuid
   "phone": "9876543210"
 }
 ```
-*Note: All fields are optional. Only send the fields you want to update.*
+
+_Note: All fields are optional. Only send the fields you want to update._
 
 **Response (200 - Success):**
+
 ```json
 {
   "success": true,
@@ -321,6 +361,7 @@ userId: user-uuid
 ```
 
 **Response (400 - No Fields):**
+
 ```json
 {
   "message": "No fields to update"
@@ -328,6 +369,7 @@ userId: user-uuid
 ```
 
 **Response (400 - Email Taken):**
+
 ```json
 {
   "message": "Email already in use"
@@ -337,20 +379,24 @@ userId: user-uuid
 ---
 
 ### 7. Edit Car
+
 **PUT** `/api/admin/car/:carId`
 
 **Headers:**
+
 ```
 Authorization: Bearer <admin_jwt_token>
 Content-Type: multipart/form-data (if uploading images)
 ```
 
 **URL Parameters:**
+
 ```
 carId: car-uuid
 ```
 
 **Request Body (Form Data):**
+
 ```
 name: "Toyota Camry Updated" (optional)
 brand: "Toyota" (optional)
@@ -360,9 +406,11 @@ seats: 5 (optional)
 pricePerDay: 60 (optional)
 images: [File, File] (optional, max 5 images)
 ```
-*Note: All fields are optional. Only send the fields you want to update.*
+
+_Note: All fields are optional. Only send the fields you want to update._
 
 **Response (200 - Success):**
+
 ```json
 {
   "success": true,
@@ -371,6 +419,7 @@ images: [File, File] (optional, max 5 images)
 ```
 
 **Response (400 - No Fields):**
+
 ```json
 {
   "message": "No fields to update"
@@ -378,6 +427,7 @@ images: [File, File] (optional, max 5 images)
 ```
 
 **Response (404 - Not Found):**
+
 ```json
 {
   "message": "Car not found"
@@ -387,17 +437,21 @@ images: [File, File] (optional, max 5 images)
 ---
 
 ## User Routes (`/api/user`)
-*All user routes require authentication*
+
+_All user routes require authentication_
 
 ### 1. Book Car
+
 **POST** `/api/user/bookCar`
 
 **Headers:**
+
 ```
 Authorization: Bearer <user_jwt_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "carId": "car-uuid",
@@ -407,6 +461,7 @@ Authorization: Bearer <user_jwt_token>
 ```
 
 **Response (201 - Success):**
+
 ```json
 {
   "success": true,
@@ -425,6 +480,7 @@ Authorization: Bearer <user_jwt_token>
 ```
 
 **Response (400 - Validation Error):**
+
 ```json
 {
   "message": "Car ID is required"
@@ -432,6 +488,7 @@ Authorization: Bearer <user_jwt_token>
 ```
 
 **Response (404 - Car Not Found):**
+
 ```json
 {
   "message": "Car not found"
@@ -443,6 +500,7 @@ Authorization: Bearer <user_jwt_token>
 ## Common Error Responses
 
 ### 401 - Unauthorized
+
 ```json
 {
   "message": "Unauthorized"
@@ -450,6 +508,7 @@ Authorization: Bearer <user_jwt_token>
 ```
 
 ### 403 - Forbidden (Not Admin)
+
 ```json
 {
   "message": "Access denied. Admin only."
@@ -457,6 +516,7 @@ Authorization: Bearer <user_jwt_token>
 ```
 
 ### 500 - Internal Server Error
+
 ```json
 {
   "message": "Internal server error"
@@ -479,52 +539,55 @@ Authorization: Bearer <user_jwt_token>
 ## Frontend Integration Examples
 
 ### Register User Example (Axios)
+
 ```javascript
-const response = await axios.post('http://localhost:3000/api/auth/register', {
-  username: 'john_doe',
-  email: 'john@example.com',
-  password: 'Password123!',
-  phone: '1234567890'
+const response = await axios.post("http://localhost:3000/api/auth/register", {
+  username: "john_doe",
+  email: "john@example.com",
+  password: "Password123!",
+  phone: "1234567890",
 });
 ```
 
 ### Add Car Example (Axios with FormData)
+
 ```javascript
 const formData = new FormData();
-formData.append('name', 'Toyota Camry');
-formData.append('brand', 'Toyota');
-formData.append('type', 'Sedan');
-formData.append('fuelType', 'Petrol');
-formData.append('seats', 5);
-formData.append('pricePerDay', 50);
-formData.append('images', file1);
-formData.append('images', file2);
+formData.append("name", "Toyota Camry");
+formData.append("brand", "Toyota");
+formData.append("type", "Sedan");
+formData.append("fuelType", "Petrol");
+formData.append("seats", 5);
+formData.append("pricePerDay", 50);
+formData.append("images", file1);
+formData.append("images", file2);
 
 const response = await axios.post(
-  'http://localhost:3000/api/admin/addCar',
+  "http://localhost:3000/api/admin/addCar",
   formData,
   {
     headers: {
-      'Authorization': `Bearer ${adminToken}`,
-      'Content-Type': 'multipart/form-data'
-    }
+      Authorization: `Bearer ${adminToken}`,
+      "Content-Type": "multipart/form-data",
+    },
   }
 );
 ```
 
 ### Book Car Example (Axios)
+
 ```javascript
 const response = await axios.post(
-  'http://localhost:3000/api/user/bookCar',
+  "http://localhost:3000/api/user/bookCar",
   {
-    carId: 'car-uuid',
-    startDate: '2025-12-20',
-    endDate: '2025-12-25'
+    carId: "car-uuid",
+    startDate: "2025-12-20",
+    endDate: "2025-12-25",
   },
   {
     headers: {
-      'Authorization': `Bearer ${userToken}`
-    }
+      Authorization: `Bearer ${userToken}`,
+    },
   }
 );
 ```

@@ -1,0 +1,16 @@
+meta {
+  name: Cancel Booking
+  type: http
+  seq: 6
+}
+
+put {
+  url: http://localhost:5000/api/v1/admin/bookings/10/cancel
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

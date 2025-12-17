@@ -17,7 +17,7 @@ interface CarRow extends RowDataPacket {
 
 interface BookingRow extends RowDataPacket {
   id: string;
-  carId: string;
+  vehicleId: string;
   startDate: string;
   endDate: string;
   status: string;
@@ -25,7 +25,7 @@ interface BookingRow extends RowDataPacket {
 
 const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { carId, startDate, endDate } = req.body;
+    const { vehicleId, startDate, endDate } = req.body;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -33,15 +33,13 @@ const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
       return;
     }
 
-    // Validate required fields
-    if (!carId || !startDate || !endDate) {
+    if (!vehicleId || !startDate || !endDate) {
       res
         .status(400)
-        .json({ message: "Car ID, start date, and end date are required" });
+        .json({ message: "Vehicle ID, start date, and end date are required" });
       return;
     }
 
-    // Validate dates
     const start = new Date(startDate);
     const end = new Date(endDate);
     const now = new Date();
@@ -56,57 +54,76 @@ const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if car exists
-    const [cars] = await query<CarRow[]>("SELECT id FROM cars WHERE id = ?", [
-      carId,
-    ]);
+    // Check if vehicle exists and get pricePerDay
+    const [vehicles] = await query<CarRow[]>(
+      "SELECT id, pricePerDay FROM vehicles WHERE id = ?",
+      [vehicleId]
+    );
 
-    if (!cars || cars.length === 0) {
-      res.status(404).json({ message: "Car not found" });
+    if (!vehicles || vehicles.length === 0) {
+      res.status(404).json({ message: "Vehicle not found" });
       return;
     }
+
+    const vehicle = vehicles[0]!;
 
     // Check if car is available for the requested dates
     const [existingBookings] = await query<BookingRow[]>(
-      `SELECT id FROM bookings 
-       WHERE carId = ? 
-       AND status IN ('PENDING', 'CONFIRMED') 
-       AND (
-         (startDate <= ? AND endDate >= ?) OR
-         (startDate <= ? AND endDate >= ?) OR
-         (startDate >= ? AND endDate <= ?)
-       )`,
-      [carId, startDate, startDate, endDate, endDate, startDate, endDate]
+      `SELECT startDate, endDate 
+       FROM bookings 
+       WHERE vehicleId = ? AND status IN ('PENDING', 'CONFIRMED')
+       ORDER BY endDate DESC`,
+      [vehicleId]
     );
 
-    if (existingBookings && existingBookings.length > 0) {
-      res.status(400).json({
-        message: "Car is not available for the selected dates",
-      });
+    const overlap = existingBookings.some(
+      (b) => start <= new Date(b.endDate) && end >= new Date(b.startDate)
+    );
+
+    if (overlap) {
+      // Suggest available date starting 1 day after last booking
+      const lastBooking = existingBookings[0];
+      if (lastBooking) {
+        const lastBookingEnd = new Date(lastBooking.endDate);
+        const suggestedStart = new Date(
+          lastBookingEnd.getTime() + 24 * 60 * 60 * 1000
+        ); // +1 day
+
+        res.status(400).json({
+          message: "Vehicle is not available for the selected dates",
+          availableFrom: suggestedStart.toISOString().split("T")[0],
+        });
+      }
       return;
     }
+
+    // Calculate total price
+    const durationInMs = end.getTime() - start.getTime();
+    const durationInDays = Math.ceil(durationInMs / (1000 * 60 * 60 * 24)); // round up
+    const totalPrice = durationInDays * vehicle.pricePerDay;
 
     // Create booking
     const bookingId = uuidv4();
     await query(
-      `INSERT INTO bookings ( userId, carId, startDate, endDate, status) 
+      `INSERT INTO bookings ( userId, vehicleId, startDate, endDate, status) 
        VALUES (?, ?, ?, ?, ?)`,
-      [userId, carId, startDate, endDate, "PENDING"]
+      [userId, vehicleId, startDate, endDate, "PENDING"]
     );
 
     res.status(201).json({
       success: true,
-      message: "Car booked 'on pending' status",
+      message: "Vehicle booked 'on pending' status",
       data: {
         bookingId,
-        carId,
+        vehicleId,
         startDate,
         endDate,
         status: "PENDING",
+        totalPrice,
       },
     });
   } catch (error) {
-    console.error("Book car error:", error);
+    console.error("Book vehicle error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -116,20 +133,67 @@ const getAvailableVehicle = async (
   res: Response
 ): Promise<void> => {
   try {
-    const [cars] = await query<CarRow[]>(
-      `SELECT * FROM cars WHERE status = 'AVAILABLE' ORDER BY createdAt DESC`
+    const [vehicles] = await query<CarRow[]>(
+      `SELECT * FROM vehicles WHERE status = 'AVAILABLE' ORDER BY createdAt DESC`
     );
 
     res.status(200).json({
       success: true,
-      count: cars.length,
-      data: cars.map((car) => ({
+      count: vehicles.length,
+      data: vehicles.map((car) => ({
         ...car,
         imageUrl: car.imageUrl ? JSON.parse(car.imageUrl) : [],
       })),
     });
   } catch (error) {
-    console.error("Fetch available cars error:", error);
+    console.error("Fetch available vehicles error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const getVehicleById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { vehicleId } = req.params;
+
+    if (!vehicleId) {
+      res.status(400).json({ message: "Vehicle ID is required" });
+      return;
+    }
+
+    const [vehicle] = await query<CarRow[]>(
+      `SELECT *
+       FROM vehicles
+       WHERE id = ?`,
+      [vehicleId]
+    );
+
+    if (!vehicle || vehicle.length === 0) {
+      res.status(404).json({ message: "Vehicle not found" });
+      return;
+    }
+
+    const vehicleData = vehicle[0];
+    if (!vehicleData) {
+      res.status(404).json({ message: "Vehicle not found" });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        name: vehicleData.name,
+        brand: vehicleData.brand,
+        type: vehicleData.type,
+        fuelType: vehicleData.fuelType,
+        seats: vehicleData.seats,
+        pricePerDay: vehicleData.pricePerDay,
+        status: vehicleData.status,
+        images: vehicleData.imageUrl ? JSON.parse(vehicleData.imageUrl) : [],
+        createdAt: vehicleData.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Fetch vehicle details error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -137,6 +201,7 @@ const getAvailableVehicle = async (
 const userController = {
   bookVehicle,
   getAvailableVehicle,
+  getVehicleById,
 };
 
 export default userController;

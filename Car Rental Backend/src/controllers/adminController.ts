@@ -49,7 +49,7 @@ const addCar = async (req: AuthRequest, res: Response): Promise<void> => {
 
     // Insert into DB
     const [result] = await query(
-      `INSERT INTO cars
+      `INSERT INTO vehicles
   (name, brand, type, fuelType, seats, pricePerDay, imageUrl)
   VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -167,18 +167,18 @@ const deleteCar = async (req: AuthRequest, res: Response): Promise<void> => {
     }
 
     // Check if car exists
-    const [cars] = await query<RowDataPacket[]>(
-      "SELECT id FROM cars WHERE id = ?",
+    const [vehicles] = await query<RowDataPacket[]>(
+      "SELECT id FROM vehicles WHERE id = ?",
       [carId]
     );
 
-    if (!cars || cars.length === 0) {
+    if (!vehicles || vehicles.length === 0) {
       res.status(404).json({ message: "Car not found" });
       return;
     }
 
     // Delete car
-    await query("DELETE FROM cars WHERE id = ?", [carId]);
+    await query("DELETE FROM vehicles WHERE id = ?", [carId]);
 
     res.status(200).json({
       success: true,
@@ -271,12 +271,12 @@ const editCar = async (req: AuthRequest, res: Response): Promise<void> => {
     }
 
     // Check if car exists
-    const [cars] = await query<RowDataPacket[]>(
-      "SELECT id FROM cars WHERE id = ?",
+    const [vehicles] = await query<RowDataPacket[]>(
+      "SELECT id FROM vehicles WHERE id = ?",
       [carId]
     );
 
-    if (!cars || cars.length === 0) {
+    if (!vehicles || vehicles.length === 0) {
       res.status(404).json({ message: "Car not found" });
       return;
     }
@@ -326,7 +326,10 @@ const editCar = async (req: AuthRequest, res: Response): Promise<void> => {
 
     values.push(carId);
 
-    await query(`UPDATE cars SET ${updates.join(", ")} WHERE id = ?`, values);
+    await query(
+      `UPDATE vehicles SET ${updates.join(", ")} WHERE id = ?`,
+      values
+    );
 
     res.status(200).json({
       success: true,
@@ -354,7 +357,7 @@ const getPendingBookings = async (
         u.username,
         u.email,
         u.phone,
-        c.id as carId,
+        c.id as vehicleId,
         c.name,
         c.brand,
         c.type,
@@ -364,7 +367,7 @@ const getPendingBookings = async (
         c.imageUrl
       FROM bookings b
       INNER JOIN users u ON b.userId = u.id
-      INNER JOIN cars c ON b.carId = c.id
+      INNER JOIN vehicles c ON b.vehicleId = c.id
       WHERE b.status = 'PENDING'
       ORDER BY c.id, b.createdAt DESC
     `);
@@ -373,12 +376,12 @@ const getPendingBookings = async (
     const carMap = new Map<string, any>();
 
     rows.forEach((row) => {
-      const carId = row.carId;
+      const vehicleId = row.vehicleId;
 
-      if (!carMap.has(carId)) {
-        carMap.set(carId, {
+      if (!carMap.has(vehicleId)) {
+        carMap.set(vehicleId, {
           car: {
-            id: row.carId,
+            id: row.vehicleId,
             name: row.name,
             brand: row.brand,
             type: row.type,
@@ -391,7 +394,7 @@ const getPendingBookings = async (
         });
       }
 
-      carMap.get(carId).bookings.push({
+      carMap.get(vehicleId).bookings.push({
         booking: {
           id: row.bookingId,
           status: row.status,
@@ -412,7 +415,7 @@ const getPendingBookings = async (
 
     res.status(200).json({
       success: true,
-      totalCars: formatted.length,
+      totalvehicles: formatted.length,
       totalBookings: rows.length,
       data: formatted,
     });
@@ -422,6 +425,91 @@ const getPendingBookings = async (
   }
 };
 
+const approveBooking = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { bookingId } = req.params;
+
+    if (!bookingId) {
+      res.status(400).json({ message: "Booking ID is required" });
+      return;
+    }
+
+    // Check if booking exists and is pending
+    const [bookings] = await query<RowDataPacket[]>(
+      "SELECT id, status FROM bookings WHERE id = ?",
+      [bookingId]
+    );
+
+    if (!bookings || bookings.length === 0) {
+      res.status(404).json({ message: "Booking not found" });
+      return;
+    }
+
+    const booking = bookings[0]!;
+    if (booking.status !== "PENDING") {
+      res
+        .status(400)
+        .json({ message: "Only pending bookings can be approved" });
+      return;
+    }
+
+    // Approve booking
+    await query("UPDATE bookings SET status = ? WHERE id = ?", [
+      "CONFIRMED",
+      bookingId,
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Booking approved successfully",
+    });
+  } catch (error) {
+    console.error("Approve booking error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const cancelBooking = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const { bookingId } = req.params;
+
+    if (!bookingId) {
+      res.status(400).json({ message: "Booking ID is required" });
+      return;
+    }
+
+    // Check if booking exists
+    const [bookings] = await query<RowDataPacket[]>(
+      "SELECT id FROM bookings WHERE id = ?",
+      [bookingId]
+    );
+
+    if (!bookings || bookings.length === 0) {
+      res.status(404).json({ message: "Booking not found" });
+      return;
+    }
+
+    // Delete booking
+    await query("DELETE FROM bookings WHERE id = ?", [bookingId]);
+
+    res.status(200).json({
+      success: true,
+      message: "Booking cancelled  successfully and deleted",
+    });
+  } catch (error) {
+    console.error("Delete booking error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export { cancelBooking };
+
 const adminController = {
   addCar,
   allUsers,
@@ -430,6 +518,8 @@ const adminController = {
   editUser,
   editCar,
   getPendingBookings,
+  approveBooking,
+  cancelBooking,
 };
 
 export default adminController;

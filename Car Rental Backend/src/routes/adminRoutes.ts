@@ -10,9 +10,9 @@ import adminValidation from "../validations/adminValidation";
 
 const adminRoutes = Router();
 
-// Get Pending Booked Cars
+// Get Pending Booked vehicles
 adminRoutes.get(
-  "/pending-booked-cars",
+  "/pending-booked-vehicles",
   authMiddleware,
   adminMiddleware,
   adminController.getPendingBookings
@@ -69,6 +69,20 @@ adminRoutes.put(
   upload.array("images", 5),
   validate(adminValidation.editCar),
   adminController.editCar
+);
+
+// Approve a booking
+adminRoutes.put(
+  "/bookings/:bookingId/approve",
+  authMiddleware,
+  adminController.approveBooking
+);
+
+// Cancel a booking
+adminRoutes.put(
+  "/bookings/:bookingId/cancel",
+  authMiddleware,
+  adminController.cancelBooking
 );
 
 export default adminRoutes;

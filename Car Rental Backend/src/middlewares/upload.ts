@@ -5,7 +5,7 @@ import cloudinary from "../helpers/config/cloudinary";
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
-    folder: "cars",
+    folder: "vehicles",
     allowed_formats: ["jpg", "jpeg", "png"],
   } as any,
 });
