@@ -1,0 +1,36 @@
+meta {
+  name: Edit Car
+  type: http
+  seq: 3
+}
+
+put {
+  url: http://localhost:5000/api/v1/admin/car/37ce593c-da6e-11f0-9ad4-507b9de891cb
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+  
+    "name": "Changed byd"
+  
+  }
+  
+}
+
+body:multipart-form {
+  name: Toyota Corolla
+  brand: Toyota
+  fuelType: DIESEL
+  seats: 5
+  pricePerDay: 599
+  images: @file(C:\Users\user\Desktop\mailgun issue.png)
+  type: SEDAN
+  images: @file(C:\Users\user\Desktop\la.jpg)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,16 @@
+meta {
+  name: Pending Booked Cars
+  type: http
+  seq: 4
+}
+
+get {
+  url: http://localhost:5000/api/v1/admin/pending-booked-cars
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

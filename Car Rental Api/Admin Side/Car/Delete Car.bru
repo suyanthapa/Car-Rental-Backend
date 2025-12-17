@@ -1,0 +1,36 @@
+meta {
+  name: Delete Car
+  type: http
+  seq: 2
+}
+
+delete {
+  url: http://localhost:5000/api/v1/admin/car/58b6c0ce-da6d-11f0-9ad4-507b9de891cb
+  body: none
+  auth: inherit
+}
+
+body:json {
+  {
+  
+    "email": "sqqs@test.com",
+    "password": "12345678"
+  }
+  
+}
+
+body:multipart-form {
+  name: Toyota Corolla
+  brand: Toyota
+  fuelType: DIESEL
+  seats: 5
+  pricePerDay: 599
+  images: @file(C:\Users\user\Desktop\mailgun issue.png)
+  type: SEDAN
+  images: @file(C:\Users\user\Desktop\la.jpg)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,20 +1,20 @@
 meta {
-  name: View All Users
+  name: Edit User
   type: http
-  seq: 2
+  seq: 3
 }
 
-post {
-  url: http://localhost:5000/api/v1/admin/addCar
-  body: multipartForm
+put {
+  url: http://localhost:5000/api/v1/admin/car/37ce593c-da6e-11f0-9ad4-507b9de891cb
+  body: json
   auth: inherit
 }
 
 body:json {
   {
   
-    "email": "sqqs@test.com",
-    "password": "12345678"
+    "name": "Changed byd"
+  
   }
   
 }

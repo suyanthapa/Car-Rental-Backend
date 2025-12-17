@@ -1,0 +1,36 @@
+meta {
+  name: Add Car
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:5000/api/v1/admin/addCar
+  body: multipartForm
+  auth: inherit
+}
+
+body:json {
+  {
+  
+    "email": "sqqs@test.com",
+    "password": "12345678"
+  }
+  
+}
+
+body:multipart-form {
+  name: New Car ho
+  brand: BYD
+  fuelType: HYBRID
+  seats: 5
+  pricePerDay: 67767
+  images: @file(C:\Users\user\Desktop\mailgun issue.png)
+  type: TRUCK
+  images: @file(C:\Users\user\Desktop\la.jpg)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
