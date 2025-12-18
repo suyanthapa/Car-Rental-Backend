@@ -28,4 +28,7 @@ userRoutes.post(
   userController.bookVehicle
 );
 
+// view my bookings
+userRoutes.get("/bookings/me", userController.getMyBookings);
+
 export default userRoutes;

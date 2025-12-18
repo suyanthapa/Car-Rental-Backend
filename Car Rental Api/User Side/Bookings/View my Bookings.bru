@@ -1,0 +1,25 @@
+meta {
+  name: View my Bookings
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://localhost:5000/api/v1/user/bookings/me
+  body: none
+  auth: inherit
+}
+
+body:json {
+  {
+    "vehicleId":"370d49f1-db3b-11f0-b524-507b9de891cb",
+    "startDate": "2025-12-25T10:00:00",
+    "endDate": "2025-12-26T10:00:00"
+  }
+  
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

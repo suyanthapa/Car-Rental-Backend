@@ -90,5 +90,7 @@ adminRoutes.put(
   validate(adminValidation.editUser),
   adminController.editUser
 );
+//Admin dashboard ( stats)
+adminRoutes.get("/dashboard", adminController.getAdminDashboard);
 
 export default adminRoutes;

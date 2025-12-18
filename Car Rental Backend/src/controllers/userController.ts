@@ -198,10 +198,93 @@ const getVehicleById = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+//USER BOOKING HISTORY
+/* What user can see
+    --All their bookings
+    --With vehicle details
+    --Status (PENDING | CONFIRMED | CANCELLED | COMPLETED)
+    --Sorted by latest first 
+*/
+const getMyBookings = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const [rows] = await query<RowDataPacket[]>(
+      `
+      SELECT
+        b.id AS bookingId,
+        b.status,
+        b.startDate,
+        b.endDate,
+        b.createdAt,
+        c.id AS vehicleId,
+        c.name,
+        c.brand,
+        c.type,
+        c.fuelType,
+        c.seats,
+        c.pricePerDay,
+        c.imageUrl
+      FROM bookings b
+      INNER JOIN vehicles c ON b.vehicleId = c.id
+      WHERE b.userId = ?
+      ORDER BY b.createdAt DESC
+    `,
+      [userId]
+    );
+
+    const formatted = rows.map((row) => {
+      const days = Math.ceil(
+        (new Date(row.endDate).getTime() - new Date(row.startDate).getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
+
+      return {
+        booking: {
+          id: row.bookingId,
+          status: row.status,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          createdAt: row.createdAt,
+          totalPrice: days * row.pricePerDay,
+        },
+        vehicle: {
+          id: row.vehicleId,
+          name: row.name,
+          brand: row.brand,
+          type: row.type,
+          fuelType: row.fuelType,
+          seats: row.seats,
+          pricePerDay: row.pricePerDay,
+          images: row.imageUrl ? JSON.parse(row.imageUrl) : [],
+        },
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      totalBookings: formatted.length,
+      data: formatted,
+    });
+  } catch (error) {
+    console.error("Get my bookings error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 const userController = {
   bookVehicle,
   getAvailableVehicle,
   getVehicleById,
+  getMyBookings,
 };
 
 export default userController;

@@ -667,6 +667,54 @@ const getAvailableVehicles = async (
   }
 };
 
+//Get Admin Dashboard Stats
+const getAdminDashboard = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const [[userCount]] = await query<RowDataPacket[]>(
+      "SELECT COUNT(*) AS total FROM users WHERE role = 'USER'"
+    );
+
+    const [[vehicleCount]] = await query<RowDataPacket[]>(
+      "SELECT COUNT(*) AS total FROM vehicles"
+    );
+
+    const [[pendingBookings]] = await query<RowDataPacket[]>(
+      "SELECT COUNT(*) AS total FROM bookings WHERE status = 'PENDING'"
+    );
+
+    const [[confirmedBookings]] = await query<RowDataPacket[]>(
+      "SELECT COUNT(*) AS total FROM bookings WHERE status = 'CONFIRMED'"
+    );
+
+    const [revenueRows] = await query<RowDataPacket[]>(`
+      SELECT 
+        SUM(
+          DATEDIFF(endDate, startDate) * v.pricePerDay
+        ) AS totalRevenue
+      FROM bookings b
+      INNER JOIN vehicles v ON b.vehicleId = v.id
+      WHERE b.status = 'CONFIRMED'
+    `);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        users: userCount?.total || 0,
+        vehicles: vehicleCount?.total || 0,
+        pendingBookings: pendingBookings?.total || 0,
+        confirmedBookings: confirmedBookings?.total || 0,
+        totalRevenue: revenueRows[0]?.totalRevenue || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Admin dashboard error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 const adminController = {
   addCar,
   allUsers,
@@ -680,6 +728,7 @@ const adminController = {
   getAllVehicles,
   getApprovedBookings,
   getAvailableVehicles,
+  getAdminDashboard,
 };
 
 export default adminController;
