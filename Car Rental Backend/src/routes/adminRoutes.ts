@@ -10,26 +10,64 @@ import adminValidation from "../validations/adminValidation";
 
 const adminRoutes = Router();
 
-// Get Pending Booked vehicles
-adminRoutes.get(
-  "/pending-booked-vehicles",
-  authMiddleware,
-  adminMiddleware,
-  adminController.getPendingBookings
-);
+/* =========================
+   VEHICLE MANAGEMENT
+========================= */
 
 // Add Car
 adminRoutes.post(
   "/addCar",
-  authMiddleware,
-  adminMiddleware,
   upload.array("images", 5),
   validate(adminValidation.addCar),
   adminController.addCar
 );
 
+// Get ALL vehicles (Admin – paginated)
+adminRoutes.get("/vehicles", adminController.getAllVehicles);
+
+// Edit Vehicle
+adminRoutes.put(
+  "/car/:carId",
+  upload.array("images", 5),
+  validate(adminValidation.editCar),
+  adminController.editCar
+);
+
+// Delete Vehicle
+adminRoutes.delete("/car/:carId", adminController.deleteCar);
+
+/* =========================
+   BOOKING MANAGEMENT
+========================= */
+
+// View pending bookings (grouped by vehicle)
+adminRoutes.get("/pending-booked-vehicles", adminController.getPendingBookings);
+
+// Approve booking
+adminRoutes.patch(
+  "/bookings/:bookingId/approve",
+  adminController.approveBooking
+);
+
+// Cancel a booking
+adminRoutes.put("/bookings/:bookingId/cancel", adminController.cancelBooking);
+
+// View approved bookings
+adminRoutes.get("/bookings/approved", adminController.getApprovedBookings);
+
+/* =========================
+   AVAILABILITY
+========================= */
+
+// View available vehicles
+adminRoutes.get("/vehicles/available", adminController.getAvailableVehicles);
+
+/* =========================
+   USER MANAGEMENT
+========================= */
+
 // Get All Users (with Pagination)
-adminRoutes.post(
+adminRoutes.get(
   "/users",
   authMiddleware,
   adminMiddleware,
@@ -44,14 +82,6 @@ adminRoutes.delete(
   adminController.deleteUser
 );
 
-// Delete Car
-adminRoutes.delete(
-  "/car/:carId",
-  authMiddleware,
-  adminMiddleware,
-  adminController.deleteCar
-);
-
 // Edit User
 adminRoutes.put(
   "/user/:userId",
@@ -59,30 +89,6 @@ adminRoutes.put(
   adminMiddleware,
   validate(adminValidation.editUser),
   adminController.editUser
-);
-
-// Edit Car
-adminRoutes.put(
-  "/car/:carId",
-  authMiddleware,
-  adminMiddleware,
-  upload.array("images", 5),
-  validate(adminValidation.editCar),
-  adminController.editCar
-);
-
-// Approve a booking
-adminRoutes.put(
-  "/bookings/:bookingId/approve",
-  authMiddleware,
-  adminController.approveBooking
-);
-
-// Cancel a booking
-adminRoutes.put(
-  "/bookings/:bookingId/cancel",
-  authMiddleware,
-  adminController.cancelBooking
 );
 
 export default adminRoutes;

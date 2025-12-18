@@ -508,7 +508,164 @@ const cancelBooking = async (
   }
 };
 
-export { cancelBooking };
+//View ALL Vehicles – with pagination
+const getAllVehicles = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
+
+    const [countResult] = await query<RowDataPacket[]>(
+      "SELECT COUNT(*) as total FROM vehicles"
+    );
+
+    const total = countResult[0]!.total;
+
+    const [vehicles] = await query<RowDataPacket[]>(
+      `SELECT 
+        id, name, brand, type, fuelType, seats, pricePerDay, status, imageUrl, createdAt
+       FROM vehicles
+       ORDER BY createdAt DESC
+       LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "All vehicles fetched successfully",
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+      data: vehicles.map((v) => ({
+        ...v,
+        images: v.imageUrl ? JSON.parse(v.imageUrl) : [],
+      })),
+    });
+  } catch (error) {
+    console.error("Get all vehicles admin error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//View ALL APPROVED (CONFIRMED) BOOKINGS with Vehicle + User details
+const getApprovedBookings = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const [rows] = await query<RowDataPacket[]>(`
+      SELECT
+        b.id as bookingId,
+        b.startDate,
+        b.endDate,
+        b.createdAt as bookingDate,
+
+        u.id as userId,
+        u.username,
+        u.email,
+        u.phone,
+
+        v.id as vehicleId,
+        v.name,
+        v.brand,
+        v.type,
+        v.fuelType,
+        v.seats,
+        v.pricePerDay,
+        v.imageUrl
+      FROM bookings b
+      INNER JOIN users u ON b.userId = u.id
+      INNER JOIN vehicles v ON b.vehicleId = v.id
+      WHERE b.status = 'CONFIRMED'
+      ORDER BY b.createdAt DESC
+    `);
+
+    res.status(200).json({
+      success: true,
+      totalApprovedBookings: rows.length,
+      data: rows.map((row) => ({
+        booking: {
+          id: row.bookingId,
+          startDate: row.startDate,
+          endDate: row.endDate,
+          bookedAt: row.bookingDate,
+        },
+        user: {
+          id: row.userId,
+          username: row.username,
+          email: row.email,
+          phone: row.phone,
+        },
+        vehicle: {
+          id: row.vehicleId,
+          name: row.name,
+          brand: row.brand,
+          type: row.type,
+          fuelType: row.fuelType,
+          seats: row.seats,
+          pricePerDay: row.pricePerDay,
+          images: row.imageUrl ? JSON.parse(row.imageUrl) : [],
+        },
+      })),
+    });
+  } catch (error) {
+    console.error("Get approved bookings error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//View ALL AVAILABLE VEHICLES
+//✅ “Available” = no PENDING or CONFIRMED bookings for today or future
+
+const getAvailableVehicles = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    const [vehicles] = await query<RowDataPacket[]>(
+      `
+      SELECT 
+        v.id, v.name, v.brand, v.type, v.fuelType,
+        v.seats, v.pricePerDay, v.imageUrl
+      FROM vehicles v
+      WHERE v.id NOT IN (
+        SELECT b.vehicleId
+        FROM bookings b
+        WHERE b.status IN ('PENDING', 'CONFIRMED')
+        AND b.endDate >= ?
+      )
+      ORDER BY v.createdAt DESC
+    `,
+      [today]
+    );
+
+    res.status(200).json({
+      success: true,
+      totalAvailableVehicles: vehicles.length,
+      data: vehicles.map((v) => ({
+        id: v.id,
+        name: v.name,
+        brand: v.brand,
+        type: v.type,
+        fuelType: v.fuelType,
+        seats: v.seats,
+        pricePerDay: v.pricePerDay,
+        images: v.imageUrl ? JSON.parse(v.imageUrl) : [],
+      })),
+    });
+  } catch (error) {
+    console.error("Get available vehicles error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 const adminController = {
   addCar,
@@ -520,6 +677,9 @@ const adminController = {
   getPendingBookings,
   approveBooking,
   cancelBooking,
+  getAllVehicles,
+  getApprovedBookings,
+  getAvailableVehicles,
 };
 
 export default adminController;
