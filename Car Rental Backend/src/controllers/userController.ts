@@ -28,6 +28,7 @@ const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
     const { vehicleId, startDate, endDate } = req.body;
     const userId = req.user?.id;
 
+    // 1. Basic Authorization & Input Validation
     if (!userId) {
       res.status(401).json({ message: "Unauthorized" });
       return;
@@ -42,20 +43,41 @@ const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
 
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const now = new Date();
+    const today = new Date();
 
-    if (start < now) {
+    // Normalize all dates to midnight for clean comparison
+    today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    // 2. Range Validation (1-Month Rule)
+    const maxAllowedDate = new Date();
+    maxAllowedDate.setMonth(maxAllowedDate.getMonth() + 1);
+
+    if (start < today) {
       res.status(400).json({ message: "Start date cannot be in the past" });
       return;
     }
 
-    if (end <= start) {
-      res.status(400).json({ message: "End date must be after start date" });
+    if (end > maxAllowedDate) {
+      res.status(400).json({
+        message: "You can only book within a 1-month range from today",
+        limit: maxAllowedDate.toISOString().split("T")[0],
+      });
       return;
     }
 
-    // Check if vehicle exists and get pricePerDay
-    const [vehicles] = await query<CarRow[]>(
+    if (end <= start) {
+      res
+        .status(400)
+        .json({
+          message: "End date must be at least one day after start date",
+        });
+      return;
+    }
+
+    // 3. Check if Vehicle Exists
+    const [vehicles] = await query<any[]>(
       "SELECT id, pricePerDay FROM vehicles WHERE id = ?",
       [vehicleId]
     );
@@ -64,66 +86,82 @@ const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
       res.status(404).json({ message: "Vehicle not found" });
       return;
     }
+    const vehicle = vehicles[0];
 
-    const vehicle = vehicles[0]!;
-
-    // Check if car is available for the requested dates
-    const [existingBookings] = await query<BookingRow[]>(
+    // 4. Fetch Existing Bookings to check for Overlaps + Maintenance
+    const [existingBookings] = await query<any[]>(
       `SELECT startDate, endDate 
        FROM bookings 
        WHERE vehicleId = ? AND status IN ('PENDING', 'CONFIRMED')
-       ORDER BY endDate DESC`,
+       ORDER BY startDate ASC`,
       [vehicleId]
     );
 
-    const overlap = existingBookings.some(
-      (b) => start <= new Date(b.endDate) && end >= new Date(b.startDate)
-    );
+    // Find the SPECIFIC conflict
+    const conflict = existingBookings.find((b) => {
+      const bStart = new Date(b.startDate);
+      const bEnd = new Date(b.endDate);
 
-    if (overlap) {
-      // Suggest available date starting 1 day after last booking
-      const lastBooking = existingBookings[0];
-      if (lastBooking) {
-        const lastBookingEnd = new Date(lastBooking.endDate);
-        const suggestedStart = new Date(
-          lastBookingEnd.getTime() + 24 * 60 * 60 * 1000
-        ); // +1 day
+      // Maintenance buffer: block the day after the booking ends
+      const maintenanceDay = new Date(bEnd);
+      maintenanceDay.setDate(maintenanceDay.getDate() + 1);
 
-        res.status(400).json({
-          message: "Vehicle is not available for the selected dates",
-          availableFrom: suggestedStart.toISOString().split("T")[0],
-        });
-      }
+      // Overlap logic:
+      // Does my START fall before their Maintenance ends?
+      // AND Does my END fall after their Booking starts?
+      return start <= maintenanceDay && end >= bStart;
+    });
+
+    if (conflict) {
+      const bEnd = new Date(conflict.endDate);
+      const nextAvailable = new Date(bEnd);
+      nextAvailable.setDate(nextAvailable.getDate() + 2); // End + 1 (maint) + 1 (new start)
+
+      res.status(400).json({
+        message: "Vehicle unavailable (Maintenance buffer included)",
+        conflict: {
+          bookedUntil: bEnd.toISOString().split("T")[0],
+          maintenanceDay: new Date(bEnd.getTime() + 86400000)
+            .toISOString()
+            .split("T")[0],
+          suggestedAvailableDate: nextAvailable.toISOString().split("T")[0],
+        },
+      });
       return;
     }
 
-    // Calculate total price
+    // 5. Success - Calculate Price and Create Record
     const durationInMs = end.getTime() - start.getTime();
-    const durationInDays = Math.ceil(durationInMs / (1000 * 60 * 60 * 24)); // round up
+    const durationInDays = Math.ceil(durationInMs / (1000 * 60 * 60 * 24));
     const totalPrice = durationInDays * vehicle.pricePerDay;
 
-    // Create booking
     const bookingId = uuidv4();
+
+    // Insert Booking
     await query(
-      `INSERT INTO bookings ( userId, vehicleId, startDate, endDate, status) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [userId, vehicleId, startDate, endDate, "PENDING"]
+      `INSERT INTO bookings (userId, vehicleId, startDate, endDate, status) 
+       VALUES (?, ?, ?, ?, 'PENDING')`,
+      [userId, vehicleId, startDate, endDate]
     );
+
+    // Update Vehicle Status
+    await query("UPDATE vehicles SET status = 'BOOKED' WHERE id = ?", [
+      vehicleId,
+    ]);
 
     res.status(201).json({
       success: true,
-      message: "Vehicle booked 'on pending' status",
+      message: "Booking requested successfully",
       data: {
         bookingId,
-        vehicleId,
-        startDate,
-        endDate,
-        status: "PENDING",
         totalPrice,
+        startDate: startDate,
+        endDate: endDate,
+        status: "PENDING",
       },
     });
   } catch (error) {
-    console.error("Book vehicle error:", error);
+    console.error("Critical Booking Error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -134,7 +172,9 @@ const getAvailableVehicle = async (
 ): Promise<void> => {
   try {
     const [vehicles] = await query<CarRow[]>(
-      `SELECT * FROM vehicles WHERE status = 'AVAILABLE' ORDER BY createdAt DESC`
+      `SELECT * FROM vehicles 
+   WHERE status IN ('AVAILABLE', 'BOOKED') 
+   ORDER BY createdAt DESC`
     );
 
     res.status(200).json({
