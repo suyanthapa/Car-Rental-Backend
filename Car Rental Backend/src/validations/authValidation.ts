@@ -34,34 +34,7 @@ const authValidation = {
       }),
     }),
   },
-  forget_password: {
-    body: Joi.object().keys({
-      email: Joi.string().email().required().messages({
-        "string.empty": "Username is required",
-        "string.email": "Username must be valid email address",
-      }),
-    }),
-  },
-  reset_password: {
-    body: Joi.object().keys({
-      userId: Joi.string().required().messages({
-        "string.empty": "User ID is required",
-        "any.required": "User ID is required",
-      }),
-      newPassword: Joi.string().min(8).max(50).required().messages({
-        "string.empty": "Password is required",
-        "string.min": "Passsword must be at least 8 character",
-        "string.max": "Password must not exceed 50 characters",
-      }),
-      otp: Joi.number().min(100000).max(999999).required().messages({
-        "number.base": "OTP must be a number",
-        "number.empty": "OTP is required",
-        "number.min": "OTP must be a 6-digit number",
-        "number.max": "OTP must be a 6-digit number",
-      }),
-    }),
-  },
-  verify_email: {
+  verifyEmail: {
     body: Joi.object().keys({
       userId: Joi.string().required().messages({
         "string.empty": "User ID is required",

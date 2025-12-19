@@ -1,16 +1,27 @@
 import bcrypt from "bcryptjs";
 
-import jwt, { SignOptions } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+import { v4 as uuidv4 } from "uuid";
 import { Request, Response } from "express";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 import { query } from "../helpers/config/db";
 import env from "../helpers/config";
+import { sendEmailToken } from "../helpers/sendRecoveryOtp";
+import { EmailTopic } from "../helpers/emailMessage";
 
 interface UserRow extends RowDataPacket {
   id: string;
   email: string;
   password: string;
   role: string;
+}
+
+interface OtpRow extends RowDataPacket {
+  id: string;
+  otp_code: string;
+  userId: string;
+  createdAt: Date;
+  expiresAt: Date;
 }
 const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -27,17 +38,41 @@ const register = async (req: Request, res: Response): Promise<void> => {
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+    const userId = uuidv4();
 
     // Insert user (RAW SQL)
     const [result]: any = await query(
-      "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
-      [username, email, hashedPassword]
+      "INSERT INTO users (id, username, email, password) VALUES (?, ?, ?, ?)",
+      [userId, username, email, hashedPassword]
     );
+    const sql = `
+      DELETE FROM otp
+      WHERE userId = ?
+    `;
+
+    //delete any existing otp for the user
+    await query(sql, [userId]);
+    const otp = await sendEmailToken(
+      email,
+      email,
+      EmailTopic.VerifyEmail,
+      userId
+    );
+    console.log("OTP sent:", otp);
+
+    const insertOtpSql = `
+  INSERT INTO otp (otp_code, userId, expiresAt)
+  VALUES (?, ?, ?)
+`;
+
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); //expires in 10 minutes
+
+    await query(insertOtpSql, [otp, userId, expiresAt]);
 
     //  Success response
     res.status(201).json({
-      message: "User registered successfully",
-      userId: result.id || 1,
+      message: "User registered successfully and sent otp to email",
+      userId: userId || 1,
     });
   } catch (error) {
     console.error("Register error:", error);
@@ -127,10 +162,71 @@ const logout = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const verifyEmail = async (req: Request, res: Response): Promise<void> => {
+  const { userId, otp } = req.body;
+
+  try {
+    if (!userId || !otp) {
+      res.status(400).json({ message: "UserId and OTP are required" });
+      return;
+    }
+
+    //  Fetch user
+    const [users] = await query<UserRow[]>("SELECT * FROM users WHERE id = ?", [
+      userId,
+    ]);
+    if (users.length === 0) {
+      res.status(400).json({ message: "User does not exist" });
+      return;
+    }
+    const user = users[0]!;
+
+    //  Fetch latest OTP
+    const [otps] = await query<OtpRow[]>(
+      "SELECT * FROM otp WHERE userId = ? ORDER BY createdAt DESC LIMIT 1",
+      [user.id]
+    );
+    if (otps.length === 0) {
+      res.status(400).json({ message: "Invalid OTP or expired" });
+      return;
+    }
+    const otpDoc = otps[0]!;
+
+    //  Check expiry
+    const now = new Date();
+    if (new Date(otpDoc.expiresAt) < now) {
+      res.status(400).json({ message: "OTP expired" });
+      return;
+    }
+
+    // Compare OTP (plain text)
+    const providedOtp = otp.toString().trim();
+    if (otpDoc.otp_code !== providedOtp) {
+      res.status(400).json({ message: "Invalid OTP" });
+      return;
+    }
+
+    //  Update user to verified
+    await query("UPDATE users SET isVerified = 1 WHERE id = ?", [user.id]);
+
+    // Delete all OTPs for this user
+    await query("DELETE FROM otp WHERE userId = ?", [user.id]);
+
+    res.status(200).json({
+      message: "Email verified successfully",
+      info: { isVerified: 1, email: user.email },
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 const authController = {
   register,
   login,
   logout,
+  verifyEmail,
 };
 
 export default authController;

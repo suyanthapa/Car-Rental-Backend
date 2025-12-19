@@ -16,4 +16,12 @@ authRoutes.post(
 
 authRoutes.post("/login", validate(authValidation.login), authController.login);
 
+authRoutes.post(
+  "/verify-email",
+  validate(authValidation.verifyEmail),
+  authController.verifyEmail
+);
+
+authRoutes.post("/logout", authMiddleware, authController.logout);
+
 export default authRoutes;
