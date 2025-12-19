@@ -135,16 +135,20 @@ const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
     /* ===============================
        6. CREATE BOOKING
     =============================== */
-    const bookingId = uuidv4();
-
     await query(
       `
-      INSERT INTO bookings (
-        id, userId, vehicleId, startDate, endDate, status, totalPrice
-      )
-      VALUES (?, ?, ?, ?, ?, 'PENDING', ?)
-      `,
-      [bookingId, userId, vehicleId, startDate, endDate, totalPrice]
+  INSERT INTO bookings (
+    userId,
+    vehicleId,
+    startDate,
+    endDate,
+    totalDays,
+    totalPrice,
+    status
+  )
+  VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
+  `,
+      [userId, vehicleId, startDate, endDate, durationInDays, totalPrice]
     );
 
     /* ===============================
@@ -154,7 +158,6 @@ const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
       success: true,
       message: "Vehicle booked on pending status",
       data: {
-        bookingId,
         vehicleId,
         startDate,
         endDate,
