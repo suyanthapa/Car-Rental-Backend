@@ -1,6 +1,6 @@
 # 🚗 Car Rental API
 
-A RESTful API for car rental management built with [Hono](https://hono.dev/), [Prisma](https://www.prisma.io/), and [Bun](https://bun.sh/).
+A RESTful API for car rental management 
 
 ## 📋 Table of Contents
 
