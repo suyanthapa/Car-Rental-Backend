@@ -478,15 +478,22 @@ const cancelBooking = async (
 ): Promise<void> => {
   try {
     const { bookingId } = req.params;
+    const userId = req.user?.id;
 
     if (!bookingId) {
       res.status(400).json({ message: "Booking ID is required" });
       return;
     }
 
-    // Check if booking exists
+    /* ===============================
+       1. CHECK BOOKING
+    =============================== */
     const [bookings] = await query<RowDataPacket[]>(
-      "SELECT id FROM bookings WHERE id = ?",
+      `
+      SELECT id, status, userId
+      FROM bookings
+      WHERE id = ?
+      `,
       [bookingId]
     );
 
@@ -495,15 +502,54 @@ const cancelBooking = async (
       return;
     }
 
-    // Delete booking
-    await query("DELETE FROM bookings WHERE id = ?", [bookingId]);
+    const booking = bookings[0]!;
 
+    /* ===============================
+       2. AUTHORIZATION (OPTIONAL BUT RECOMMENDED)
+    =============================== */
+    if (booking.userId !== userId) {
+      res
+        .status(403)
+        .json({ message: "You are not allowed to cancel this booking" });
+      return;
+    }
+
+    /* ===============================
+       3. STATUS VALIDATION
+    =============================== */
+    if (booking.status === "CANCELLED") {
+      res.status(400).json({ message: "Booking is already cancelled" });
+      return;
+    }
+
+    if (booking.status === "COMPLETED") {
+      res
+        .status(400)
+        .json({ message: "Completed bookings cannot be cancelled" });
+      return;
+    }
+
+    /* ===============================
+       4. UPDATE STATUS
+    =============================== */
+    await query(
+      `
+      UPDATE bookings
+      SET status = 'CANCELLED'
+      WHERE id = ?
+      `,
+      [bookingId]
+    );
+
+    /* ===============================
+       5. RESPONSE
+    =============================== */
     res.status(200).json({
       success: true,
-      message: "Booking cancelled  successfully and deleted",
+      message: "Booking cancelled successfully",
     });
   } catch (error) {
-    console.error("Delete booking error:", error);
+    console.error("Cancel booking error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

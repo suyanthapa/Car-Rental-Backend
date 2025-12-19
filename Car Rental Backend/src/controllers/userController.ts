@@ -28,16 +28,18 @@ const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
     const { vehicleId, startDate, endDate } = req.body;
     const userId = req.user?.id;
 
-    // 1. Basic Authorization & Input Validation
+    /* ===============================
+       1. AUTH & BASIC VALIDATION
+    =============================== */
     if (!userId) {
       res.status(401).json({ message: "Unauthorized" });
       return;
     }
 
     if (!vehicleId || !startDate || !endDate) {
-      res
-        .status(400)
-        .json({ message: "Vehicle ID, start date, and end date are required" });
+      res.status(400).json({
+        message: "Vehicle ID, start date, and end date are required",
+      });
       return;
     }
 
@@ -45,17 +47,26 @@ const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
     const end = new Date(endDate);
     const today = new Date();
 
-    // Normalize all dates to midnight for clean comparison
     today.setHours(0, 0, 0, 0);
     start.setHours(0, 0, 0, 0);
     end.setHours(0, 0, 0, 0);
 
-    // 2. Range Validation (1-Month Rule)
+    /* ===============================
+       2. DATE RULES
+    =============================== */
     const maxAllowedDate = new Date();
     maxAllowedDate.setMonth(maxAllowedDate.getMonth() + 1);
+    maxAllowedDate.setHours(0, 0, 0, 0);
 
     if (start < today) {
       res.status(400).json({ message: "Start date cannot be in the past" });
+      return;
+    }
+
+    if (end <= start) {
+      res.status(400).json({
+        message: "End date must be at least one day after start date",
+      });
       return;
     }
 
@@ -67,16 +78,9 @@ const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
       return;
     }
 
-    if (end <= start) {
-      res
-        .status(400)
-        .json({
-          message: "End date must be at least one day after start date",
-        });
-      return;
-    }
-
-    // 3. Check if Vehicle Exists
+    /* ===============================
+       3. VEHICLE CHECK
+    =============================== */
     const [vehicles] = await query<any[]>(
       "SELECT id, pricePerDay FROM vehicles WHERE id = ?",
       [vehicleId]
@@ -86,78 +90,76 @@ const bookVehicle = async (req: AuthRequest, res: Response): Promise<void> => {
       res.status(404).json({ message: "Vehicle not found" });
       return;
     }
+
     const vehicle = vehicles[0];
 
-    // 4. Fetch Existing Bookings to check for Overlaps + Maintenance
-    const [existingBookings] = await query<any[]>(
-      `SELECT startDate, endDate 
-       FROM bookings 
-       WHERE vehicleId = ? AND status IN ('PENDING', 'CONFIRMED')
-       ORDER BY startDate ASC`,
-      [vehicleId]
+    /* ===============================
+       4. OVERLAP + MAINTENANCE CHECK
+    =============================== */
+    const [conflicts] = await query<any[]>(
+      `
+      SELECT startDate, endDate
+      FROM bookings
+      WHERE vehicleId = ?
+        AND status IN ('PENDING', 'CONFIRMED')
+        AND NOT (
+          DATE_ADD(endDate, INTERVAL 1 DAY) < ?
+          OR startDate > ?
+        )
+      ORDER BY endDate DESC
+      LIMIT 1
+      `,
+      [vehicleId, startDate, endDate]
     );
 
-    // Find the SPECIFIC conflict
-    const conflict = existingBookings.find((b) => {
-      const bStart = new Date(b.startDate);
-      const bEnd = new Date(b.endDate);
-
-      // Maintenance buffer: block the day after the booking ends
-      const maintenanceDay = new Date(bEnd);
-      maintenanceDay.setDate(maintenanceDay.getDate() + 1);
-
-      // Overlap logic:
-      // Does my START fall before their Maintenance ends?
-      // AND Does my END fall after their Booking starts?
-      return start <= maintenanceDay && end >= bStart;
-    });
-
-    if (conflict) {
-      const bEnd = new Date(conflict.endDate);
-      const nextAvailable = new Date(bEnd);
-      nextAvailable.setDate(nextAvailable.getDate() + 2); // End + 1 (maint) + 1 (new start)
+    if (conflicts.length > 0) {
+      const conflict = conflicts[0];
+      const bookedUntil = new Date(conflict.endDate);
+      const availableFrom = new Date(bookedUntil);
+      availableFrom.setDate(availableFrom.getDate() + 2);
 
       res.status(400).json({
-        message: "Vehicle unavailable (Maintenance buffer included)",
-        conflict: {
-          bookedUntil: bEnd.toISOString().split("T")[0],
-          maintenanceDay: new Date(bEnd.getTime() + 86400000)
-            .toISOString()
-            .split("T")[0],
-          suggestedAvailableDate: nextAvailable.toISOString().split("T")[0],
-        },
+        message: "Vehicle is not available for the selected dates",
+        availableFrom: availableFrom.toISOString().split("T")[0],
       });
       return;
     }
 
-    // 5. Success - Calculate Price and Create Record
+    /* ===============================
+       5. PRICE CALCULATION
+    =============================== */
     const durationInMs = end.getTime() - start.getTime();
     const durationInDays = Math.ceil(durationInMs / (1000 * 60 * 60 * 24));
     const totalPrice = durationInDays * vehicle.pricePerDay;
 
+    /* ===============================
+       6. CREATE BOOKING
+    =============================== */
     const bookingId = uuidv4();
 
-    // Insert Booking
     await query(
-      `INSERT INTO bookings (userId, vehicleId, startDate, endDate, status) 
-       VALUES (?, ?, ?, ?, 'PENDING')`,
-      [userId, vehicleId, startDate, endDate]
+      `
+      INSERT INTO bookings (
+        id, userId, vehicleId, startDate, endDate, status, totalPrice
+      )
+      VALUES (?, ?, ?, ?, ?, 'PENDING', ?)
+      `,
+      [bookingId, userId, vehicleId, startDate, endDate, totalPrice]
     );
 
-    // Update Vehicle Status
-    await query("UPDATE vehicles SET status = 'BOOKED' WHERE id = ?", [
-      vehicleId,
-    ]);
-
+    /* ===============================
+       7. SUCCESS RESPONSE
+    =============================== */
     res.status(201).json({
       success: true,
-      message: "Booking requested successfully",
+      message: "Vehicle booked on pending status",
       data: {
         bookingId,
-        totalPrice,
-        startDate: startDate,
-        endDate: endDate,
+        vehicleId,
+        startDate,
+        endDate,
         status: "PENDING",
+        totalPrice,
       },
     });
   } catch (error) {
