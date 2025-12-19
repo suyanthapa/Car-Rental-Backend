@@ -325,11 +325,55 @@ const getMyBookings = async (
   }
 };
 
+const viewOwnProfile = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const [users] = await query<RowDataPacket[]>(
+      `
+      SELECT 
+        id,
+        username,
+        email,
+        phone,
+        isVerified,
+        role,
+        createdAt
+      FROM users
+      WHERE id = ?
+      `,
+      [userId]
+    );
+
+    if (!users || users.length === 0) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Profile fetched successfully",
+      data: users[0],
+    });
+  } catch (error) {
+    console.error("View own profile error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 const userController = {
   bookVehicle,
   getAvailableVehicle,
   getVehicleById,
   getMyBookings,
+  viewOwnProfile,
 };
 
 export default userController;

@@ -65,6 +65,16 @@ adminRoutes.get("/vehicles/available", adminController.getAvailableVehicles);
 /* =========================
    USER MANAGEMENT
 ========================= */
+//View own profile (admin)
+adminRoutes.get("/me", authMiddleware, adminController.viewOwnProfile);
+
+//View specific user profile
+adminRoutes.get(
+  "/user/:userId",
+  authMiddleware,
+  adminMiddleware,
+  adminController.viewUserProfile
+);
 
 // Get All Users (with Pagination)
 adminRoutes.get(

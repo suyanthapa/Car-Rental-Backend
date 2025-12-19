@@ -1,0 +1,36 @@
+meta {
+  name: View My Profile
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:5000/api/v1/user/me
+  body: none
+  auth: inherit
+}
+
+body:json {
+  {
+  
+    "name": "suyan"
+  
+  }
+  
+}
+
+body:multipart-form {
+  name: Toyota Corolla
+  brand: Toyota
+  fuelType: DIESEL
+  seats: 5
+  pricePerDay: 599
+  images: @file(C:\Users\user\Desktop\mailgun issue.png)
+  type: SEDAN
+  images: @file(C:\Users\user\Desktop\la.jpg)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

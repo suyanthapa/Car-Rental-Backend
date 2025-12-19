@@ -5,6 +5,9 @@ import userController from "../controllers/userController";
 import userValidation from "../validations/userValidation";
 const userRoutes = Router();
 
+//View own profile
+userRoutes.get("/me", authMiddleware, userController.viewOwnProfile);
+
 // Get Car
 userRoutes.get(
   "/vehicles/available",
