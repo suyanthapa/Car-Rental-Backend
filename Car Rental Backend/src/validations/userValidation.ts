@@ -25,6 +25,26 @@ const userValidation = {
       }),
     }),
   },
+  updatePassword: {
+    body: Joi.object().keys({
+      oldPassword: Joi.string().required().messages({
+        "string.empty": "Old password is required",
+      }),
+
+      // New password with strength rules
+      newPassword: Joi.string()
+        .min(8)
+        .max(30)
+
+        .invalid(Joi.ref("oldPassword")) // Ensures new password is not same as old
+        .required()
+        .messages({
+          "string.min": "New password must be at least 8 characters long",
+          "any.invalid": "New password cannot be the same as the old password",
+          "string.empty": "New password is required",
+        }),
+    }),
+  },
 };
 
 export default userValidation;

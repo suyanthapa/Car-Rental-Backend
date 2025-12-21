@@ -3,6 +3,7 @@ import { RowDataPacket } from "mysql2";
 import { query } from "../helpers/config/db";
 import { AuthRequest } from "../middlewares/authMiddleware";
 import { v4 as uuidv4 } from "uuid";
+import bcrypt from "bcryptjs";
 
 interface CarRow extends RowDataPacket {
   id: string;
@@ -368,12 +369,64 @@ const viewOwnProfile = async (
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+const updatePassword = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ success: false, message: "Unauthorized" });
+      return;
+    }
+
+    // 1. Fetch the user's current hashed password
+    const [users] = await query<RowDataPacket[]>(
+      `SELECT password FROM users WHERE id = ?`,
+      [userId]
+    );
+
+    if (!users || users.length === 0) {
+      res.status(404).json({ success: false, message: "User not found" });
+      return;
+    }
+
+    // 2. Verify the old password
+    const isMatch = await bcrypt.compare(oldPassword, users[0]!.password);
+    if (!isMatch) {
+      res.status(400).json({ success: false, message: "Invalid old password" });
+      return;
+    }
+
+    // 3. Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // 4. Update the database
+    await query(`UPDATE users SET password = ? WHERE id = ?`, [
+      hashedPassword,
+      userId,
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    console.error("Update password error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
 const userController = {
   bookVehicle,
   getAvailableVehicle,
   getVehicleById,
   getMyBookings,
   viewOwnProfile,
+  updatePassword,
 };
 
 export default userController;

@@ -31,6 +31,12 @@ userRoutes.post(
   userController.bookVehicle
 );
 
+// Update Password
+userRoutes.patch(
+  "/updatePassword",
+  validate(userValidation.updatePassword),
+  userController.updatePassword
+);
 // view my bookings
 userRoutes.get("/bookings/me", userController.getMyBookings);
 
