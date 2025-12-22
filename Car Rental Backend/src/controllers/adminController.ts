@@ -459,7 +459,7 @@ const approveBooking = async (
 
     // Check if booking exists and is pending
     const [bookings] = await query<RowDataPacket[]>(
-      "SELECT id, status FROM bookings WHERE id = ?",
+      "SELECT id, status, vehicleId FROM bookings WHERE id = ?",
       [bookingId]
     );
 
@@ -480,6 +480,12 @@ const approveBooking = async (
     await query("UPDATE bookings SET status = ? WHERE id = ?", [
       "CONFIRMED",
       bookingId,
+    ]);
+
+    // Set vehicle status to booked
+    await query("UPDATE vehicles SET status = ? WHERE id = ?", [
+      "booked",
+      booking.vehicleId,
     ]);
 
     res.status(200).json({

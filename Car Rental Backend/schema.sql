@@ -51,7 +51,7 @@ CREATE TABLE bookings (
 
 CREATE TABLE otp (
     id CHAR(36) NOT NULL PRIMARY KEY DEFAULT (uuid()),
-    otp_code VARCHAR(10) NOT NULL,
+    otp_code VARCHAR(100) NOT NULL,
     userId CHAR(36) NOT NULL,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     expiresAt DATETIME NOT NULL,

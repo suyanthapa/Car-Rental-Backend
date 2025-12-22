@@ -66,8 +66,8 @@ const register = async (req: Request, res: Response): Promise<void> => {
 `;
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); //expires in 10 minutes
-
-    await query(insertOtpSql, [otp, userId, expiresAt]);
+    const hashedOtp = await bcrypt.hash(otp.toString(), 10);
+    await query(insertOtpSql, [hashedOtp, userId, expiresAt]);
 
     //  Success response
     res.status(201).json({
@@ -222,104 +222,79 @@ const verifyEmail = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// const forgetPassword = async (req: Request, res: Response): Promise<void> => {
-//   try {
-//     const { email } = req.body;
+const forgetPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
 
-//     // Find user by email
-//     const existingUser = await findUserByEmail(email);
+    //  Find user
+    const [users] = await query<UserRow[]>(
+      "SELECT id, email, UserName, isVerified FROM users WHERE email = ?",
+      [email]
+    );
+    if (users.length === 0) {
+      return res.status(400).json({ message: "User does not exist" });
+    }
 
-//     if (!existingUser) {
-//       res
-//         .status(400)
-//         .json(
-//           makeErrorResponse(
-//             new Error("User does not exist"),
-//             "error.auth.user_not_found",
-//             lang,
-//             400
-//           )
-//         );
-//       return;
-//     }
+    const user = users[0]!;
 
-//     // If not verified, resend verification OTP
-//     if (!existingUser.isVerified) {
-//       // Delete all existing OTPs for this user
-//       await deleteUserOTPs(existingUser.id);
+    //  If user not verified, resend verification OTP
+    if (!user.isVerified) {
+      // Delete old OTPs
+      await query("DELETE FROM otp WHERE userId = ?", [user.id]);
 
-//       // Generate and send OTP
-//       const otp = await sendEmailToken(
-//         email,
-//         email,
-//         EmailTopic.VerifyEmail,
-//         existingUser.id
-//       );
-//       const hashedOtp = await bcrypt.hash(otp.toString(), 10);
+      // Send verification OTP
+      const otp = await sendEmailToken(
+        email,
+        user.UserName,
+        EmailTopic.ForgotPassword,
+        user.id
+      );
+      const hashedOtp = await bcrypt.hash(otp.toString(), 10);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-//       // Create new OTP
-//       await createOTP(
-//         existingUser.id,
-//         hashedOtp,
-//         new Date(Date.now() + 10 * 60 * 1000)
-//       );
+      await query(
+        "INSERT INTO otp (otp_code, userId, expiresAt) VALUES (?, ?, ?)",
+        [hashedOtp, user.id, expiresAt]
+      );
 
-//       res
-//         .status(403)
-//         .json(
-//           makeErrorResponse(
-//             new Error("Email not verified. Verification link resent."),
-//             "error.auth.email_not_verified",
-//             lang,
-//             403
-//           )
-//         );
-//       return;
-//     }
+      return res.status(403).json({
+        message: "Email not verified. Verification link resent.",
+      });
+    }
 
-//     // For verified users → send password reset OTP
+    // 3️⃣ For verified users → send password reset OTP
+    await query("DELETE FROM otp WHERE userId = ?", [user.id]);
 
-//     // Delete all existing OTPs for this user
-//     await deleteUserOTPs(existingUser.id);
+    const otp = await sendEmailToken(
+      email,
+      user.UserName,
+      EmailTopic.ForgotPassword,
+      user.id
+    );
+    const hashedOtp = await bcrypt.hash(otp.toString(), 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-//     // Generate and send OTP
-//     const otp = await sendEmailToken(
-//       email,
-//       existingUser.UserName,
-//       EmailTopic.ForgotPassword,
-//       existingUser.id
-//     );
-//     const hashedOtp = await bcrypt.hash(otp.toString(), 10);
+    await query(
+      "INSERT INTO otp (otp_code, userId, expiresAt) VALUES (?, ?, ?)",
+      [hashedOtp, user.id, expiresAt]
+    );
 
-//     // Create new OTP
-//     await createOTP(
-//       existingUser.id,
-//       hashedOtp,
-//       new Date(Date.now() + 10 * 60 * 1000)
-//     );
-
-//     res
-//       .status(200)
-//       .json(
-//         makeSuccessResponse(
-//           { userId: existingUser.id },
-//           "success.auth.otp_sent",
-//           lang,
-//           200
-//         )
-//       );
-//     return;
-//   } catch (error) {
-//     console.error("Logout error:", error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
+    return res.status(200).json({
+      message: "OTP sent for password reset",
+      userId: user.id,
+    });
+  } catch (error) {
+    console.error("Forget password error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 const authController = {
   register,
   login,
   logout,
   verifyEmail,
+  forgetPassword,
 };
 
 export default authController;

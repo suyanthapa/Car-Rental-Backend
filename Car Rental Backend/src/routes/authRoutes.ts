@@ -24,4 +24,10 @@ authRoutes.post(
 
 authRoutes.post("/logout", authMiddleware, authController.logout);
 
+authRoutes.post(
+  "/forget-password",
+  validate(authValidation.forget_password),
+  authController.forgetPassword
+);
+
 export default authRoutes;
