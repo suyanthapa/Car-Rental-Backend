@@ -222,6 +222,99 @@ const verifyEmail = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+// const forgetPassword = async (req: Request, res: Response): Promise<void> => {
+//   try {
+//     const { email } = req.body;
+
+//     // Find user by email
+//     const existingUser = await findUserByEmail(email);
+
+//     if (!existingUser) {
+//       res
+//         .status(400)
+//         .json(
+//           makeErrorResponse(
+//             new Error("User does not exist"),
+//             "error.auth.user_not_found",
+//             lang,
+//             400
+//           )
+//         );
+//       return;
+//     }
+
+//     // If not verified, resend verification OTP
+//     if (!existingUser.isVerified) {
+//       // Delete all existing OTPs for this user
+//       await deleteUserOTPs(existingUser.id);
+
+//       // Generate and send OTP
+//       const otp = await sendEmailToken(
+//         email,
+//         email,
+//         EmailTopic.VerifyEmail,
+//         existingUser.id
+//       );
+//       const hashedOtp = await bcrypt.hash(otp.toString(), 10);
+
+//       // Create new OTP
+//       await createOTP(
+//         existingUser.id,
+//         hashedOtp,
+//         new Date(Date.now() + 10 * 60 * 1000)
+//       );
+
+//       res
+//         .status(403)
+//         .json(
+//           makeErrorResponse(
+//             new Error("Email not verified. Verification link resent."),
+//             "error.auth.email_not_verified",
+//             lang,
+//             403
+//           )
+//         );
+//       return;
+//     }
+
+//     // For verified users → send password reset OTP
+
+//     // Delete all existing OTPs for this user
+//     await deleteUserOTPs(existingUser.id);
+
+//     // Generate and send OTP
+//     const otp = await sendEmailToken(
+//       email,
+//       existingUser.UserName,
+//       EmailTopic.ForgotPassword,
+//       existingUser.id
+//     );
+//     const hashedOtp = await bcrypt.hash(otp.toString(), 10);
+
+//     // Create new OTP
+//     await createOTP(
+//       existingUser.id,
+//       hashedOtp,
+//       new Date(Date.now() + 10 * 60 * 1000)
+//     );
+
+//     res
+//       .status(200)
+//       .json(
+//         makeSuccessResponse(
+//           { userId: existingUser.id },
+//           "success.auth.otp_sent",
+//           lang,
+//           200
+//         )
+//       );
+//     return;
+//   } catch (error) {
+//     console.error("Logout error:", error);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// };
+
 const authController = {
   register,
   login,

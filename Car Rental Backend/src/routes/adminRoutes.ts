@@ -40,6 +40,9 @@ adminRoutes.delete("/car/:carId", adminController.deleteCar);
    BOOKING MANAGEMENT
 ========================= */
 
+//  → list all bookings
+adminRoutes.get("/bookings", adminController.getAllBookings);
+
 // View pending bookings (grouped by vehicle)
 adminRoutes.get("/pending-booked-vehicles", adminController.getPendingBookings);
 

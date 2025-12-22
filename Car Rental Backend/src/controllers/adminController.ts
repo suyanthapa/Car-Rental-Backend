@@ -341,6 +341,26 @@ const editCar = async (req: AuthRequest, res: Response): Promise<void> => {
   }
 };
 
+const getAllBookings = async (req: AuthRequest, res: Response) => {
+  try {
+    const [bookings] = await query<RowDataPacket[]>(
+      "SELECT id, userId, vehicleId, startDate, endDate, status, createdAt FROM bookings ORDER BY createdAt DESC"
+    );
+
+    if (!bookings || bookings.length === 0) {
+      return res.status(404).json({ message: "No bookings found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      bookings,
+    });
+  } catch (error) {
+    console.error("Get all bookings error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 const getPendingBookings = async (
   req: AuthRequest,
   res: Response
@@ -854,6 +874,7 @@ const adminController = {
   deleteCar,
   editUser,
   editCar,
+  getAllBookings,
   getPendingBookings,
   approveBooking,
   cancelBooking,
