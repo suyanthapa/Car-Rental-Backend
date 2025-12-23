@@ -199,9 +199,10 @@ const verifyEmail = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Compare OTP (plain text)
+    // Compare OTP using bcrypt
     const providedOtp = otp.toString().trim();
-    if (otpDoc.otp_code !== providedOtp) {
+    const isOtpValid = await bcrypt.compare(providedOtp, otpDoc.otp_code);
+    if (!isOtpValid) {
       res.status(400).json({ message: "Invalid OTP" });
       return;
     }
@@ -289,12 +290,119 @@ const forgetPassword = async (req: Request, res: Response) => {
   }
 };
 
+const verifyOtp = async (req: Request, res: Response): Promise<void> => {
+  const { email, otp } = req.body;
+
+  try {
+    if (!email || !otp) {
+      res.status(400).json({ message: "Email and OTP are required" });
+      return;
+    }
+
+    // 1. Find User by Email
+    const [users] = await query<any[]>("SELECT id FROM users WHERE email = ?", [
+      email,
+    ]);
+    if (users.length === 0) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+    const userId = users[0].id;
+
+    // 2. Get the most recent OTP for this user
+    const [otps] = await query<any[]>(
+      "SELECT * FROM otp WHERE userId = ? ORDER BY createdAt DESC LIMIT 1",
+      [userId]
+    );
+
+    if (otps.length === 0) {
+      res.status(400).json({ message: "No OTP record found. Please resend." });
+      return;
+    }
+
+    const otpDoc = otps[0];
+
+    // 3. Check if Expired
+    if (new Date(otpDoc.expiresAt) < new Date()) {
+      res.status(400).json({ message: "OTP has expired" });
+      return;
+    }
+
+    // 4. Verify the OTP code
+    const isOtpValid = await bcrypt.compare(
+      otp.toString().trim(),
+      otpDoc.otp_code
+    );
+    if (!isOtpValid) {
+      res.status(400).json({ message: "Invalid OTP" });
+      return;
+    }
+
+    // 5. CRITICAL: Delete all OTPs for this user now that it's verified
+    await query("DELETE FROM otp WHERE userId = ?", [userId]);
+
+    // 6. Respond with success
+    res.status(200).json({
+      success: true,
+      message: "OTP verified . Proceed to update your password.",
+      data: {
+        userId: userId,
+        email: email,
+      },
+    });
+  } catch (error) {
+    console.error("OTP Verification Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const setNewPassword = async (req: Request, res: Response): Promise<void> => {
+  const { email, newPassword, confirmPassword } = req.body;
+
+  try {
+    //Check if passwords match
+    if (newPassword !== confirmPassword) {
+      res.status(400).json({ message: "Passwords do not match" });
+      return;
+    }
+
+    // 4. Verify user exists
+    const [users] = await query<any[]>("SELECT id FROM users WHERE email = ?", [
+      email,
+    ]);
+    if (users.length === 0) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    // 5. Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    //  Update the database
+    await query("UPDATE users SET password = ? WHERE email = ?", [
+      hashedPassword,
+      email,
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Password has been reset successfully. You can now log in.",
+    });
+  } catch (error) {
+    console.error(" Reset Password Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 const authController = {
   register,
   login,
   logout,
   verifyEmail,
   forgetPassword,
+  verifyOtp,
+  setNewPassword,
 };
 
 export default authController;

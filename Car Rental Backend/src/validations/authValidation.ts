@@ -1,4 +1,5 @@
 import Joi from "joi";
+import { verify } from "jsonwebtoken";
 
 const authValidation = {
   register: {
@@ -72,6 +73,38 @@ const authValidation = {
       email: Joi.string().email().required().messages({
         "string.empty": "Email is required",
         "string.email": "Email must be valid email address",
+      }),
+    }),
+  },
+  verify_otp: {
+    body: Joi.object().keys({
+      email: Joi.string().email().required().messages({
+        "string.empty": "Email is required",
+        "string.email": "Email must be valid email address",
+      }),
+      otp: Joi.string().min(6).max(6).required().messages({
+        "string.base": "OTP must be a string",
+        "string.empty": "OTP is required",
+        "string.min": "OTP must be a 6-digit number",
+        "string.max": "OTP must be a 6-digit number",
+      }),
+    }),
+  },
+  set_new_password: {
+    body: Joi.object().keys({
+      email: Joi.string().email().required().messages({
+        "string.empty": "Email is required",
+        "string.email": "Email must be valid email address",
+      }),
+      newPassword: Joi.string().min(6).max(50).required().messages({
+        "string.empty": "Password is required",
+        "string.min": "Password must be at least 6 characters long",
+        "string.max": "Password must not exceed 50 characters",
+      }),
+      confirmPassword: Joi.string().min(6).max(50).required().messages({
+        "string.empty": "confirmPassword is required",
+        "string.min": "confirmPassword must be at least 6 characters long",
+        "string.max": "confirmPassword must not exceed 50 characters",
       }),
     }),
   },

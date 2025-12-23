@@ -66,6 +66,9 @@ const adminValidation = {
       seats: Joi.number().integer().min(2).max(10).optional().messages({
         "number.base": "Seats must be a number",
       }),
+      status: Joi.string()
+        .valid("AVAILABLE", "BOOKED", "UNAVAILABLE")
+        .optional(),
       type: Joi.string()
         .valid("SEDAN", "SUV", "HATCHBACK", "VAN", "TRUCK")
         .optional(),

@@ -263,7 +263,8 @@ const editUser = async (req: AuthRequest, res: Response): Promise<void> => {
 const editCar = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { carId } = req.params;
-    const { name, brand, type, fuelType, seats, pricePerDay } = req.body;
+    const { name, brand, type, fuelType, seats, status, pricePerDay } =
+      req.body;
 
     if (!carId) {
       res.status(400).json({ message: "Car ID is required" });
@@ -308,6 +309,10 @@ const editCar = async (req: AuthRequest, res: Response): Promise<void> => {
     if (pricePerDay) {
       updates.push("pricePerDay = ?");
       values.push(pricePerDay);
+    }
+    if (status) {
+      updates.push("status = ?");
+      values.push(status);
     }
 
     // Handle image upload if present

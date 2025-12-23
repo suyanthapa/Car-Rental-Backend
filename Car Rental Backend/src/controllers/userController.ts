@@ -177,10 +177,22 @@ const getAvailableVehicle = async (
   res: Response
 ): Promise<void> => {
   try {
+    const { search } = req.query;
+
+    // Build WHERE clause for search
+    let whereClause = "WHERE status IN ('AVAILABLE', 'BOOKED')";
+    const queryParams: any[] = [];
+
+    if (search && typeof search === "string") {
+      whereClause += " AND name LIKE ?";
+      queryParams.push(`%${search}%`);
+    }
+
     const [vehicles] = await query<CarRow[]>(
       `SELECT * FROM vehicles 
-   WHERE status IN ('AVAILABLE', 'BOOKED') 
-   ORDER BY createdAt DESC`
+   ${whereClause} 
+   ORDER BY createdAt DESC`,
+      queryParams
     );
 
     res.status(200).json({

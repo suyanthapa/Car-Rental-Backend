@@ -16,6 +16,7 @@ authRoutes.post(
 
 authRoutes.post("/login", validate(authValidation.login), authController.login);
 
+//to mark user email as verified after OTP verification
 authRoutes.post(
   "/verify-email",
   validate(authValidation.verifyEmail),
@@ -30,4 +31,14 @@ authRoutes.post(
   authController.forgetPassword
 );
 
+authRoutes.post(
+  "/verify-otp",
+  validate(authValidation.verify_otp),
+  authController.verifyOtp
+);
+authRoutes.post(
+  "/set-new-password",
+  validate(authValidation.set_new_password),
+  authController.setNewPassword
+);
 export default authRoutes;
