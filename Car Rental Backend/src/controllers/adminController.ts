@@ -531,16 +531,6 @@ const cancelBooking = async (
     const booking = bookings[0]!;
 
     /* ===============================
-       2. AUTHORIZATION (OPTIONAL BUT RECOMMENDED)
-    =============================== */
-    if (booking.userId !== userId) {
-      res
-        .status(403)
-        .json({ message: "You are not allowed to cancel this booking" });
-      return;
-    }
-
-    /* ===============================
        3. STATUS VALIDATION
     =============================== */
     if (booking.status === "CANCELLED") {
