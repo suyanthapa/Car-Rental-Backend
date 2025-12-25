@@ -97,7 +97,7 @@ const allUsers = async (req: AuthRequest, res: Response): Promise<void> => {
 
     // Fetch users with pagination
     const [users] = await query<UserRow[]>(
-      "SELECT id, email, role, createdAt FROM users WHERE role = ? ORDER BY createdAt DESC LIMIT ? OFFSET ?",
+      "SELECT id, username,email, role, createdAt FROM users WHERE role = ? ORDER BY createdAt DESC LIMIT ? OFFSET ?",
       ["USER", pageSize, offset]
     );
 
