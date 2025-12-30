@@ -179,19 +179,22 @@ const getAvailableVehicle = async (
   try {
     const { search } = req.query;
 
-    // Build WHERE clause for search
+    // 1. Base filter: Only show available or booked cars
     let whereClause = "WHERE status IN ('AVAILABLE', 'BOOKED')";
     const queryParams: any[] = [];
 
+    // 2. Expand search to check BOTH name AND brand
     if (search && typeof search === "string") {
-      whereClause += " AND name LIKE ?";
-      queryParams.push(`%${search}%`);
+      const searchPattern = `%${search}%`;
+      // Use parentheses around the OR to keep the status filter separate
+      whereClause += " AND (name LIKE ? OR brand LIKE ?)";
+      queryParams.push(searchPattern, searchPattern);
     }
 
     const [vehicles] = await query<CarRow[]>(
       `SELECT * FROM vehicles 
-   ${whereClause} 
-   ORDER BY createdAt DESC`,
+       ${whereClause} 
+       ORDER BY createdAt DESC`,
       queryParams
     );
 
