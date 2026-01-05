@@ -113,9 +113,7 @@ const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
     const jwtSecret = process.env.JWT_SECRET!;
-    const token = jwt.sign({ id: user.id, role: user.role }, jwtSecret, {
-      expiresIn: "7d",
-    });
+    const token = jwt.sign({ id: user.id, role: user.role }, jwtSecret);
 
     // ✅ Set HTTP-only cookie
     res.cookie("access_token", token, {
